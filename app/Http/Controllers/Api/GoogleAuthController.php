@@ -22,52 +22,55 @@ class GoogleAuthController extends Controller
      private $client;
 
 
-    public function __construct()
-    {
-        $this->client = new Client();
-        $this->client->setClientId(env('GOOGLE_CLIENT_ID'));
-        $this->client->setClientSecret(env('GOOGLE_CLIENT_SECRET'));
-        $this->client->setRedirectUri(env('GOOGLE_REDIRECT_URI'));
-        $this->client->addScope(Gmail::GMAIL_SEND);
-        $this->client->setAccessType('offline');
-        $this->client->setPrompt('consent');
-    }
+     public function __construct()
+     {
+         $this->client = new Client();
+         $this->client->setClientId(config('services.google.client_id'));
+         $this->client->setClientSecret(config('services.google.client_secret'));
+         $this->client->setRedirectUri(config('services.google.redirect_uri'));
+         $this->client->addScope(Gmail::GMAIL_SEND);
+         $this->client->setAccessType('offline');
+         $this->client->setPrompt('consent');
+     }
 
     public function sendEmail(Request $request)
     {
-        $authUrl = $this->client->createAuthUrl();
-        return response()->json(['auth_url' => $authUrl]);
+
+        Log::info($request->all());
+
+        $token = json_decode(env('GOOGLE_ACCESS_TOKEN'), true);
+        $this->client->setAccessToken($token);
+        Log::info($token);
+
+          // Automatically refresh if expired
+    if ($this->client->isAccessTokenExpired()) {
+        $newToken = $this->client->fetchAccessTokenWithRefreshToken($this->client->getRefreshToken());
+        $token = array_merge($token, $newToken);
+        $this->client->setAccessToken($token);
+
+        // Optionally log new token
+        Log::info('Refreshed token', $token);
     }
 
 
-    public function handleCallback(Request $request)
-    {
-
-        Log::info($request->all());
-        if (! request()->has('code')||! request()->has('email')) {
-            return response()->json(['error' => 'Authorization code not provided'], 400);
-        }
-
-
-        $token= $this->client->fetchAccessTokenWithAuthCode(request('code'));
-        Log::info($token);
-
-
-        $this->client->setAccessToken($token);
-
         $gmail= new Gmail($this->client);
 
+        $from = 'zed.kreshati.2001@gmail.com'; // your authorized sender (must match the authenticated Gmail account)
         $to= $request->input('email');
         $subject= 'Google Authentication test';
-        $body= 'this is a test message';
+        // ✅ Render Blade view
+        $verificationCode = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+        $htmlBody = view('google_auth', ['verificationCode' => $verificationCode])->render();
+
 
 
         // Construct raw email
-        $rawMessageString = "To: $to\r\n";
+        $rawMessageString  = "From: $from\r\n";
+        $rawMessageString .= "To: $to\r\n";
         $rawMessageString .= "Subject: $subject\r\n";
         $rawMessageString .= "MIME-Version: 1.0\r\n";
-        $rawMessageString .= "Content-Type: text/plain; charset=utf-8\r\n\r\n";
-        $rawMessageString .= $body;
+        $rawMessageString .= "Content-Type: text/html; charset=utf-8\r\n\r\n";
+        $rawMessageString .= $htmlBody;
 
 
         $rawMessage=base64_encode($rawMessageString);
