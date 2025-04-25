@@ -2,6 +2,7 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Api\GoogleAuthController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -18,3 +19,10 @@ Route::post('checkout', [DonationController_Api::class, 'checkout']);
 Route::get('donations/success', [DonationController_Api::class, 'success']);
 Route::post('payment',[StripeWebhookController_Api::class,'createPaymentIntent' ]);
 Route::post('stripe/webhook', [StripeWebhookController_Api::class, 'handleWebhook']);
+
+
+////use App\Http\Controllers\Api\GoogleAuthController;
+
+Route::post('google/send-email', [GoogleAuthController::class, 'sendEmail']);
+Route::match(['get', 'post'], '/google/callback', [GoogleAuthController::class, 'handleCallback']);
+
