@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Api;
+namespace App\Http\Controllers\Web;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
@@ -11,7 +11,7 @@ use App\Models\Donation;
 use App\Models\Campaign;
 use \Stripe\Exception\SignatureVerificationException;
 
-class StripeWebhookController_Api extends Controller
+class StripeWebhookControllerWeb extends Controller
 {
     public function handleWebhook(Request $request)
     {
@@ -35,8 +35,8 @@ class StripeWebhookController_Api extends Controller
         } catch (SignatureVerificationException $e) {
             return response()->json(['error' => 'Invalid signature'], 400);
         }
-
         Log::info('Stripe webhook received: '. $event->type);
+
         if ($event->type === 'payment_intent.succeeded') {
             $intent = $event->data->object;
             $campaignId = $intent->metadata->campaign_id ?? null;
@@ -66,41 +66,7 @@ class StripeWebhookController_Api extends Controller
         );
     }
 
-    public function confirm(Request $request)
-{
-    $request->validate([
-        'payment_intent_id' => 'required|string',
-        'payment_method' => 'required|string', // e.g., 'pm_card_visa'
-    ]);
-
-
-
-    try {
-        \Stripe\Stripe::setApiKey(config('services.stripe.secret'));
-
-        $intent = \Stripe\PaymentIntent::retrieve($request->payment_intent_id);
-        Log::info('intent'.$intent);
-        Log::info('request'.$request);
-
-        $confirmedIntent = $intent->confirm([
-            'payment_method' => $request->payment_method,
-            'return_url' => url('/donate/success'), // Or any URL you want to redirect to after payment
-
-        ]);
-        Log::info('con'.$confirmedIntent);
-
-        return response()->json([
-            'message' => 'Payment confirmed successfully.',
-            'payment_intent' => $confirmedIntent,
-        ]);
-    } catch (\Stripe\Exception\ApiErrorException $e) {
-        return response()->json([
-            'message' => 'Failed to confirm payment.',
-            'error' => $e->getMessage(),
-        ], 500);
-    }
-}
-
-
 
 }
+
+

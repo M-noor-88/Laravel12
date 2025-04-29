@@ -26,3 +26,4 @@ Route::post('stripe/webhook', [StripeWebhookController_Api::class, 'handleWebhoo
 Route::post('google/send-email', [GoogleAuthController::class, 'sendEmail']);
 Route::match(['get', 'post'], '/google/callback', [GoogleAuthController::class, 'handleCallback']);
 
+Route::post('/donate/confirm', [StripeWebhookController_Api::class, 'confirm']);
